@@ -80,7 +80,7 @@ CHANNEL_LAYERS = {
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.AllowAny'],
-    'DEFAULT_AUTHENTICATION_CLASSES': ['rest_framework.authentication.SessionAuthentication'],
+    'DEFAULT_AUTHENTICATION_CLASSES': [],  # Remove SessionAuthentication
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
