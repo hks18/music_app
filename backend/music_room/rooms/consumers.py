@@ -24,11 +24,7 @@ class RoomConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.room_code = self.scope['url_route']['kwargs']['room_code'].upper()
         self.room_group_name = f'room_{self.room_code}'
-        self.session_key = self.scope['session'].session_key
-
-        if not self.session_key:
-            await self.close()
-            return
+        self.session_key = self.scope.get('session', {}).session_key or "guest"
 
         room = await self.get_room(self.room_code)
         if not room:
