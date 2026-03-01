@@ -205,10 +205,10 @@ export default function RoomPage() {
   useEffect(() => {
     if (!hasJoined) return;
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://hksslizz.onrender.com';
     const proto = API_URL.startsWith('https') ? 'wss' : 'ws';
     const host = API_URL.replace(/^https?:\/\//, '');
-    const WS_URL = process.env.NEXT_PUBLIC_WS_URL || `${proto}://${host}`;
+    const WS_URL = process.env.NEXT_PUBLIC_WS_URL || (proto === 'wss' ? `wss://${host}` : `ws://${host}`) || 'wss://hksslizz.onrender.com';
 
     const ws = new WebSocket(`${WS_URL}/ws/room/${roomCode}/`);
     wsRef.current = ws;
