@@ -89,11 +89,13 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'https://music-app-five-pi.vercel.app',
+    'https://music-app-git-main-hks18s-projects.vercel.app',
 ]
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'https://music-app-five-pi.vercel.app',
+    'https://music-app-git-main-hks18s-projects.vercel.app',
     'https://hksslizz.onrender.com',
 ]
 
