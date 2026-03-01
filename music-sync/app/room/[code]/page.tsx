@@ -173,7 +173,11 @@ export default function RoomPage() {
   useEffect(() => {
     if (!hasJoined) return;
 
-    const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const proto = API_URL.startsWith('https') ? 'wss' : 'ws';
+    const host = API_URL.replace(/^https?:\/\//, '');
+    const WS_URL = process.env.NEXT_PUBLIC_WS_URL || `${proto}://${host}`;
+
     const ws = new WebSocket(`${WS_URL}/ws/room/${roomCode}/`);
     wsRef.current = ws;
 
