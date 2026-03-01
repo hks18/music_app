@@ -66,6 +66,7 @@ class RoomConsumer(AsyncWebsocketConsumer):
     # ── Group message handlers ──────────────────────────────────
 
     async def playback_update(self, event):
+        print(f"DEBUG: [RoomConsumer] Sending playback_update to client in room {self.room_code}")
         await self.send(text_data=json.dumps({
             'type':          'playback_update',
             'video_id':      event.get('video_id'),
@@ -78,6 +79,7 @@ class RoomConsumer(AsyncWebsocketConsumer):
         }))
 
     async def member_joined(self, event):
+        print(f"DEBUG: [RoomConsumer] Member joined notification for room {self.room_code}")
         await self.send(text_data=json.dumps({
             'type':         'member_joined',
             'member_count': event.get('member_count'),
@@ -85,12 +87,14 @@ class RoomConsumer(AsyncWebsocketConsumer):
         }))
 
     async def member_left(self, event):
+        print(f"DEBUG: [RoomConsumer] Member left notification for room {self.room_code}")
         await self.send(text_data=json.dumps({
             'type':         'member_left',
             'member_count': event.get('member_count'),
         }))
 
     async def room_closed(self, event):
+        print(f"DEBUG: [RoomConsumer] Room closed notification for room {self.room_code}")
         await self.send(text_data=json.dumps({
             'type':    'room_closed',
             'message': event.get('message'),
@@ -98,6 +102,7 @@ class RoomConsumer(AsyncWebsocketConsumer):
         await self.close()
 
     async def sync_request(self, event):
+        print(f"DEBUG: [RoomConsumer] Forwarding sync_request to host in room {self.room_code}")
         await self.send(text_data=json.dumps({
             'type':      'sync_request',
             'requester': event.get('requester'),

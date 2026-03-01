@@ -157,7 +157,12 @@ class UpdatePlaybackView(APIView):
 
         # Broadcast via WebSocket to all room members
         channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(f'room_{room.code}', payload)
+        print(f"DEBUG: [UpdatePlaybackView] Broadcasting playback_update to room_{room.code}")
+        try:
+            async_to_sync(channel_layer.group_send)(f'room_{room.code}', payload)
+            print(f"DEBUG: [UpdatePlaybackView] Broadcast success for room_{room.code}")
+        except Exception as e:
+            print(f"DEBUG: [UpdatePlaybackView] Broadcast FAILED for room_{room.code}: {str(e)}")
 
         return Response({'message': 'Playback updated and broadcast to room.'})
 

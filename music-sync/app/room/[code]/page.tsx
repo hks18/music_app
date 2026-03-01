@@ -217,9 +217,13 @@ export default function RoomPage() {
     const ws = new WebSocket(`${WS_URL}/ws/room/${roomCode}/`);
     wsRef.current = ws;
 
+    ws.onopen = () => console.log("DEBUG: [WebSocket] Connection opened successfully");
+    ws.onerror = (err) => console.error("DEBUG: [WebSocket] Connection error:", err);
+    ws.onclose = (evt) => console.log("DEBUG: [WebSocket] Connection closed:", evt.code, evt.reason);
+
     ws.onmessage = (evt) => {
       const msg = JSON.parse(evt.data);
-      console.log("WebSocket message received:", msg.type, msg);
+      console.log("DEBUG: [WebSocket] Message received:", msg.type, msg);
 
       if (msg.type === 'playback_update' || msg.type === 'current_state') {
         const { video_id, video_title, video_channel, thumbnail, is_playing, progress_ms } = msg;

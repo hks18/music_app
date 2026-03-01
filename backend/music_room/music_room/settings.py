@@ -77,6 +77,11 @@ CHANNEL_LAYERS = {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
             "hosts": [os.getenv('REDIS_URL', 'redis://localhost:6379')],
+            "symmetric_encryption_keys": [SECRET_KEY],
+            # Use SSL if rediss is used
+            "redis_params": {
+                "ssl_cert_reqs": None
+            } if os.getenv('REDIS_URL', '').startswith('rediss') else {}
         },
     }
 }
