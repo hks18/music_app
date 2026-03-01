@@ -130,7 +130,13 @@ export default function CreatePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const shareLink = `${window?.location?.origin}/room/${roomCode}`;
+  const [shareLink, setShareLink] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setShareLink(`${window.location.origin}/room/${roomCode}`);
+    }
+  }, [roomCode]);
 
   const copyToClipboard = (text: string, type: 'code' | 'link') => {
     navigator.clipboard.writeText(text);
