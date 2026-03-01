@@ -99,6 +99,19 @@ CSRF_TRUSTED_ORIGINS = [
     'https://hksslizz.onrender.com',
 ]
 
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'x-host-session-key',
+]
+
 # Session/Cookie settings for cross-domain (Vercel -> Render)
 SESSION_COOKIE_SAMESITE = 'None'
 SESSION_COOKIE_SECURE = True

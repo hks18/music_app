@@ -23,6 +23,8 @@ class CreateRoomView(APIView):
     POST /api/rooms/create/
     Creates a room with a random 6-char code. Creator becomes host.
     """
+    authentication_classes = []
+
     def post(self, request):
         session_key = get_or_create_session(request)
         room = Room.objects.create(host_session_key=session_key)
@@ -43,6 +45,8 @@ class JoinRoomView(APIView):
     POST /api/rooms/join/
     Body: { "code": "ABC123" }
     """
+    authentication_classes = []
+
     def post(self, request):
         session_key = get_or_create_session(request)
         code = request.data.get('code', '').upper().strip()
@@ -72,6 +76,8 @@ class JoinRoomView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class LeaveRoomView(APIView):
     """POST /api/rooms/<code>/leave/"""
+    authentication_classes = []
+
     def post(self, request, code):
         session_key = get_or_create_session(request)
         room = get_object_or_404(Room, code=code.upper(), is_active=True)
@@ -119,8 +125,10 @@ class UpdatePlaybackView(APIView):
         "duration_ms": 213000
     }
     """
+    authentication_classes = []
+
     def post(self, request, code):
-        session_key = get_or_create_session(request)
+        session_key = request.headers.get('X-Host-Session-Key') or get_or_create_session(request)
         room = get_object_or_404(Room, code=code.upper(), is_active=True)
 
         if room.host_session_key != session_key:
