@@ -72,19 +72,27 @@ DATABASES = {
 # ─────────────────────────────────────────────
 # Channel layers
 # ─────────────────────────────────────────────
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            "hosts": [os.getenv('REDIS_URL', 'redis://localhost:6379')],
-            "symmetric_encryption_keys": [SECRET_KEY],
-            # Use SSL if rediss is used
-            "redis_params": {
-                "ssl_cert_reqs": None
-            } if os.getenv('REDIS_URL', '').startswith('rediss') else {}
-        },
+REDIS_URL = os.getenv('REDIS_URL')
+
+if REDIS_URL:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                "hosts": [REDIS_URL],
+                "symmetric_encryption_keys": [SECRET_KEY],
+                "redis_params": {
+                    "ssl_cert_reqs": None
+                } if REDIS_URL.startswith('rediss') else {}
+            },
+        }
     }
-}
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        }
+    }
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.AllowAny'],
