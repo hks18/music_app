@@ -141,6 +141,20 @@ export default function RoomPage() {
     }
   }, [queuedState, needsInteraction]);
 
+  // Force sync helper
+  const forceSync = useCallback(() => {
+    if (!isHost || !currentVideo || !playerRef.current || !playerReadyRef.current) return;
+    updatePlayback(roomCode, {
+      video_id: currentVideo.video_id,
+      video_title: currentVideo.title,
+      video_channel: currentVideo.channel,
+      thumbnail: currentVideo.thumbnail,
+      is_playing: isPlaying,
+      progress_ms: Math.floor(playerRef.current.getCurrentTime() * 1000),
+      duration_ms: Math.floor(playerRef.current.getDuration() * 1000),
+    }).catch(err => console.error("Force sync failed:", err));
+  }, [isHost, currentVideo, isPlaying, roomCode]);
+
   // ── Load YouTube IFrame API ──────────────────────────────────────────────────
   useEffect(() => {
     if (document.getElementById('yt-iframe-api')) return;
@@ -205,6 +219,11 @@ export default function RoomPage() {
         setMemberCount(msg.member_count ?? 1);
       }
 
+      if (msg.type === 'sync_request' && isHost) {
+        console.log("Received sync request from new guest, pushing state...");
+        forceSync();
+      }
+
       if (msg.type === 'room_closed') {
         alert('The host has closed this room.');
         router.push('/');
@@ -230,7 +249,7 @@ export default function RoomPage() {
         is_playing: isPlaying,
         progress_ms: Math.floor(playerRef.current.getCurrentTime() * 1000),
         duration_ms: Math.floor(playerRef.current.getDuration() * 1000),
-      }).catch(() => { });
+      }).catch(err => console.error("Sync interval failed:", err));
     }, 2000);
     return () => clearInterval(interval);
   }, [isHost, currentVideo, isPlaying, roomCode]);

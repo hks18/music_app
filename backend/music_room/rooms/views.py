@@ -2,6 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
@@ -15,6 +17,7 @@ def get_or_create_session(request):
     return request.session.session_key
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class CreateRoomView(APIView):
     """
     POST /api/rooms/create/
@@ -31,6 +34,7 @@ class CreateRoomView(APIView):
                         status=status.HTTP_201_CREATED)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class JoinRoomView(APIView):
     """
     POST /api/rooms/join/
@@ -62,6 +66,7 @@ class JoinRoomView(APIView):
         return Response({'message': 'Joined room successfully', 'room': serializer.data})
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class LeaveRoomView(APIView):
     """POST /api/rooms/<code>/leave/"""
     def post(self, request, code):
@@ -94,6 +99,7 @@ class RoomDetailView(APIView):
         return Response(serializer.data)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class UpdatePlaybackView(APIView):
     """
     POST /api/rooms/<code>/playback/
