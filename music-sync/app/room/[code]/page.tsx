@@ -356,15 +356,7 @@ export default function RoomPage() {
   const handleJoinSync = () => {
     setNeedsInteraction(false);
     if (playerRef.current && playerReadyRef.current && currentVideo) {
-      // On mobile, must call playVideo() directly inside a user gesture
       if (isPlaying) playerRef.current.playVideo();
-    } else if (currentVideo) {
-      // Queue it to play as soon as player is ready
-      setQueuedState({
-        video_id: currentVideo.video_id,
-        is_playing: isPlaying,
-        progress_ms: 0
-      });
     }
   };
 
