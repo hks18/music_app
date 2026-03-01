@@ -122,10 +122,28 @@ export default function RoomPage() {
 
     // Ensure session is initialized by joining via API
     joinRoom(roomCode)
-      .then(() => setHasJoined(true))
+      .then((data) => {
+        console.log("Joined room successfully via API. Initial state:", data.room);
+        const r = data.room;
+        if (r.current_video_id) {
+          setCurrentVideo({
+            video_id: r.current_video_id,
+            title: r.current_video_title,
+            channel: r.current_video_channel,
+            thumbnail: r.current_thumbnail,
+            duration: ''
+          });
+          setIsPlaying(r.is_playing);
+          setQueuedState({
+            video_id: r.current_video_id,
+            is_playing: r.is_playing,
+            progress_ms: r.progress_ms
+          });
+        }
+        setHasJoined(true);
+      })
       .catch((err) => {
         console.error("Failed to join room via API:", err);
-        // Still try to connect WS, but API join is safer
         setHasJoined(true);
       });
   }, [roomCode]);
@@ -197,25 +215,31 @@ export default function RoomPage() {
 
     ws.onmessage = (evt) => {
       const msg = JSON.parse(evt.data);
+      console.log("WebSocket message received:", msg.type, msg);
 
       if (msg.type === 'playback_update' || msg.type === 'current_state') {
         const { video_id, video_title, video_channel, thumbnail, is_playing, progress_ms } = msg;
         if (video_id) {
+          console.log(`Applying playback sync: ${video_title} (${is_playing ? 'playing' : 'paused'})`);
           setCurrentVideo({ video_id, title: video_title, channel: video_channel, thumbnail, duration: '' });
           setIsPlaying(is_playing);
 
           if (playerReadyRef.current && playerRef.current) {
             playerRef.current.loadVideoById(video_id, progress_ms / 1000);
-            if (is_playing && !needsInteraction) playerRef.current.playVideo();
-            else playerRef.current.pauseVideo();
+            if (is_playing && !needsInteraction) {
+              playerRef.current.playVideo();
+            } else {
+              playerRef.current.pauseVideo();
+            }
           } else {
-            // Queue for later when player is ready
+            console.log("Player not ready, queuing sync state...");
             setQueuedState({ video_id, is_playing, progress_ms });
           }
         }
       }
 
       if (msg.type === 'member_joined' || msg.type === 'member_left') {
+        console.log(`Member event: ${msg.type}, count: ${msg.member_count}`);
         setMemberCount(msg.member_count ?? 1);
       }
 
@@ -234,7 +258,7 @@ export default function RoomPage() {
     getRoomMembers(roomCode).then((d) => setMemberCount(d.member_count)).catch(() => { });
 
     return () => ws.close();
-  }, [roomCode, router, hasJoined, needsInteraction]);
+  }, [roomCode, router, hasJoined, needsInteraction, isHost, forceSync]);
 
   // ── Sync interval (host only) ─────────────────────────────────────────────
   useEffect(() => {
