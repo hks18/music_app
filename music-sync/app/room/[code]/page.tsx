@@ -355,8 +355,21 @@ export default function RoomPage() {
 
   const handleJoinSync = () => {
     setNeedsInteraction(false);
-    if (playerRef.current && playerReadyRef.current && currentVideo) {
-      if (isPlaying) playerRef.current.playVideo();
+    if (playerRef.current && playerReadyRef.current) {
+      if (currentVideo) {
+        // Directly trigger playback during the user gesture to unlock mobile audio
+        playerRef.current.loadVideoById(currentVideo.video_id, (queuedState?.progress_ms || 0) / 1000);
+        if (isPlaying) {
+          playerRef.current.playVideo();
+        }
+        setQueuedState(null);
+      } else {
+        // Prime the player even if no video is loaded yet to unlock the audio context
+        playerRef.current.playVideo();
+        setTimeout(() => {
+          if (!isPlaying) playerRef.current?.pauseVideo();
+        }, 100);
+      }
     }
   };
 
