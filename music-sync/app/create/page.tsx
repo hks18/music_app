@@ -122,9 +122,9 @@ export default function CreatePage() {
     createRoom()
       .then((data) => {
         setRoomCode(data.room.code);
-        sessionStorage.setItem(`host_${data.room.code}`, 'true');
+        localStorage.setItem(`host_${data.room.code}`, 'true');
         if (data.host_session_key) {
-          sessionStorage.setItem(`host_key_${data.room.code}`, data.host_session_key);
+          localStorage.setItem(`host_key_${data.room.code}`, data.host_session_key);
         }
       })
       .catch(() => setError('Could not connect to server. Is the backend running?'))

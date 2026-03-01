@@ -117,7 +117,7 @@ export default function RoomPage() {
 
   // ── Detect host ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    const h = sessionStorage.getItem(`host_${roomCode}`) === 'true';
+    const h = localStorage.getItem(`host_${roomCode}`) === 'true';
     setIsHost(h);
 
     // Ensure session is initialized by joining via API
@@ -162,7 +162,7 @@ export default function RoomPage() {
   // Force sync helper
   const forceSync = useCallback(() => {
     if (!isHost || !currentVideo || !playerRef.current || !playerReadyRef.current) return;
-    const hostKey = sessionStorage.getItem(`host_key_${roomCode}`) || undefined;
+    const hostKey = localStorage.getItem(`host_key_${roomCode}`) || undefined;
     updatePlayback(roomCode, {
       video_id: currentVideo.video_id,
       video_title: currentVideo.title,
@@ -269,7 +269,7 @@ export default function RoomPage() {
     if (!isHost || !currentVideo) return;
     const interval = setInterval(() => {
       if (!playerRef.current || !playerReadyRef.current) return;
-      const hostKey = sessionStorage.getItem(`host_key_${roomCode}`) || undefined;
+      const hostKey = localStorage.getItem(`host_key_${roomCode}`) || undefined;
       updatePlayback(roomCode, {
         video_id: currentVideo.video_id,
         video_title: currentVideo.title,
@@ -310,7 +310,7 @@ export default function RoomPage() {
       playerRef.current.playVideo();
       setIsPlaying(true);
     }
-    const hostKey = sessionStorage.getItem(`host_key_${roomCode}`) || undefined;
+    const hostKey = localStorage.getItem(`host_key_${roomCode}`) || undefined;
 
     await updatePlayback(roomCode, {
       video_id: video.video_id,
@@ -333,7 +333,7 @@ export default function RoomPage() {
       playerRef.current.playVideo();
       setIsPlaying(true);
     }
-    const hostKey = sessionStorage.getItem(`host_key_${roomCode}`) || undefined;
+    const hostKey = localStorage.getItem(`host_key_${roomCode}`) || undefined;
     await updatePlayback(roomCode, {
       video_id: currentVideo.video_id,
       video_title: currentVideo.title,
@@ -348,7 +348,8 @@ export default function RoomPage() {
   // ── Leave room ────────────────────────────────────────────────────────────
   const handleExit = useCallback(async () => {
     try { await leaveRoom(roomCode); } catch { }
-    sessionStorage.removeItem(`host_${roomCode}`);
+    localStorage.removeItem(`host_${roomCode}`);
+    localStorage.removeItem(`host_key_${roomCode}`);
     router.push('/');
   }, [roomCode, router]);
 
