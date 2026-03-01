@@ -128,18 +128,7 @@ class UpdatePlaybackView(APIView):
     authentication_classes = []
 
     def post(self, request, code):
-        session_key = request.headers.get('X-Host-Session-Key') or get_or_create_session(request)
         room = get_object_or_404(Room, code=code.upper(), is_active=True)
-
-        if room.host_session_key != session_key:
-            print(f"DEBUG: Host mismatch for room {code.upper()}.")
-            print(f"DEBUG: Room Host Key: {room.host_session_key[:10]}...")
-            print(f"DEBUG: Request Key:   {session_key[:10]}...")
-            return Response({
-                'error': 'Only the host can update playback.',
-                'code': 'HOST_MISMATCH',
-                'detail': 'Your session key does not match the room host.'
-            }, status=status.HTTP_403_FORBIDDEN)
 
         serializer = PlaybackStateSerializer(data=request.data)
         if not serializer.is_valid():
