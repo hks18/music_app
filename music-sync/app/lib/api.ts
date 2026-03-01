@@ -51,11 +51,16 @@ export interface PlaybackPayload {
   duration_ms: number;
 }
 
-export async function updatePlayback(code: string, payload: PlaybackPayload) {
+export async function updatePlayback(code: string, payload: PlaybackPayload, host_session_key?: string) {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (host_session_key) {
+    headers['X-Host-Session-Key'] = host_session_key;
+  }
+
   const res = await fetch(`${API_URL}/api/rooms/${code}/playback/`, {
     method: 'POST',
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error('Failed to update playback');

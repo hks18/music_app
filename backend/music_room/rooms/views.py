@@ -30,8 +30,11 @@ class CreateRoomView(APIView):
             room=room, session_key=session_key, defaults={'is_active': True}
         )
         serializer = RoomSerializer(room, context={'request': request})
-        return Response({'message': 'Room created successfully', 'room': serializer.data},
-                        status=status.HTTP_201_CREATED)
+        return Response({
+            'message': 'Room created successfully',
+            'room': serializer.data,
+            'host_session_key': session_key # Return to host for header-auth
+        }, status=status.HTTP_201_CREATED)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -121,7 +124,14 @@ class UpdatePlaybackView(APIView):
         room = get_object_or_404(Room, code=code.upper(), is_active=True)
 
         if room.host_session_key != session_key:
-            return Response({'error': 'Only the host can update playback.'}, status=status.HTTP_403_FORBIDDEN)
+            print(f"DEBUG: Host mismatch for room {code.upper()}.")
+            print(f"DEBUG: Room Host Key: {room.host_session_key[:10]}...")
+            print(f"DEBUG: Request Key:   {session_key[:10]}...")
+            return Response({
+                'error': 'Only the host can update playback.',
+                'code': 'HOST_MISMATCH',
+                'detail': 'Your session key does not match the room host.'
+            }, status=status.HTTP_403_FORBIDDEN)
 
         serializer = PlaybackStateSerializer(data=request.data)
         if not serializer.is_valid():

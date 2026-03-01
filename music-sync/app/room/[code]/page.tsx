@@ -162,6 +162,7 @@ export default function RoomPage() {
   // Force sync helper
   const forceSync = useCallback(() => {
     if (!isHost || !currentVideo || !playerRef.current || !playerReadyRef.current) return;
+    const hostKey = sessionStorage.getItem(`host_key_${roomCode}`) || undefined;
     updatePlayback(roomCode, {
       video_id: currentVideo.video_id,
       video_title: currentVideo.title,
@@ -170,7 +171,10 @@ export default function RoomPage() {
       is_playing: isPlaying,
       progress_ms: Math.floor(playerRef.current.getCurrentTime() * 1000),
       duration_ms: Math.floor(playerRef.current.getDuration() * 1000),
-    }).catch(err => console.error("Force sync failed:", err));
+    }, hostKey).catch(async err => {
+      const detail = await err.response?.json().catch(() => ({}));
+      console.error("Force sync failed:", err.message, detail);
+    });
   }, [isHost, currentVideo, isPlaying, roomCode]);
 
   // ── Load YouTube IFrame API ──────────────────────────────────────────────────
@@ -265,6 +269,7 @@ export default function RoomPage() {
     if (!isHost || !currentVideo) return;
     const interval = setInterval(() => {
       if (!playerRef.current || !playerReadyRef.current) return;
+      const hostKey = sessionStorage.getItem(`host_key_${roomCode}`) || undefined;
       updatePlayback(roomCode, {
         video_id: currentVideo.video_id,
         video_title: currentVideo.title,
@@ -273,7 +278,7 @@ export default function RoomPage() {
         is_playing: isPlaying,
         progress_ms: Math.floor(playerRef.current.getCurrentTime() * 1000),
         duration_ms: Math.floor(playerRef.current.getDuration() * 1000),
-      }).catch(err => console.error("Sync interval failed:", err));
+      }, hostKey).catch(err => console.error("Sync interval failed:", err));
     }, 2000);
     return () => clearInterval(interval);
   }, [isHost, currentVideo, isPlaying, roomCode]);
@@ -305,6 +310,7 @@ export default function RoomPage() {
       playerRef.current.playVideo();
       setIsPlaying(true);
     }
+    const hostKey = sessionStorage.getItem(`host_key_${roomCode}`) || undefined;
 
     await updatePlayback(roomCode, {
       video_id: video.video_id,
@@ -314,7 +320,7 @@ export default function RoomPage() {
       is_playing: true,
       progress_ms: 0,
       duration_ms: 0,
-    }).catch(() => { });
+    }, hostKey).catch(() => { });
   }, [roomCode]);
 
   // ── Play / Pause (host only) ──────────────────────────────────────────────
@@ -327,6 +333,7 @@ export default function RoomPage() {
       playerRef.current.playVideo();
       setIsPlaying(true);
     }
+    const hostKey = sessionStorage.getItem(`host_key_${roomCode}`) || undefined;
     await updatePlayback(roomCode, {
       video_id: currentVideo.video_id,
       video_title: currentVideo.title,
@@ -335,7 +342,7 @@ export default function RoomPage() {
       is_playing: !isPlaying,
       progress_ms: Math.floor((playerRef.current?.getCurrentTime() ?? 0) * 1000),
       duration_ms: Math.floor((playerRef.current?.getDuration() ?? 0) * 1000),
-    }).catch(() => { });
+    }, hostKey).catch(() => { });
   }, [isHost, isPlaying, currentVideo, roomCode]);
 
   // ── Leave room ────────────────────────────────────────────────────────────

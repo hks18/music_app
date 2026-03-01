@@ -121,10 +121,11 @@ export default function CreatePage() {
     // Call real backend to create room
     createRoom()
       .then((data) => {
-        const code = data.room?.code || data.code;
-        setRoomCode(code);
-        // Mark this session as host for this room
-        sessionStorage.setItem(`host_${code}`, 'true');
+        setRoomCode(data.room.code);
+        sessionStorage.setItem(`host_${data.room.code}`, 'true');
+        if (data.host_session_key) {
+          sessionStorage.setItem(`host_key_${data.room.code}`, data.host_session_key);
+        }
       })
       .catch(() => setError('Could not connect to server. Is the backend running?'))
       .finally(() => setLoading(false));
