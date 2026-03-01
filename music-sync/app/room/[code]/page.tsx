@@ -6,7 +6,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Float, Sphere } from '@react-three/drei';
 import * as THREE from 'three';
-import { leaveRoom, updatePlayback, searchYouTube, getRoomMembers, YTVideo } from '../../lib/api';
+import { leaveRoom, updatePlayback, searchYouTube, getRoomMembers, YTVideo, joinRoom } from '../../lib/api';
 
 // ─── 3-D scene ────────────────────────────────────────────────────────────────
 
@@ -103,6 +103,9 @@ export default function RoomPage() {
   const [searchResults, setSearchResults] = useState<YTVideo[]>([]);
   const [searching, setSearching] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [needsInteraction, setNeedsInteraction] = useState(true);
+  const [hasJoined, setHasJoined] = useState(false);
+  const [queuedState, setQueuedState] = useState<any>(null);
 
   // IFrame player
   const playerRef = useRef<YTPlayer | null>(null);
@@ -116,7 +119,27 @@ export default function RoomPage() {
   useEffect(() => {
     const h = sessionStorage.getItem(`host_${roomCode}`) === 'true';
     setIsHost(h);
+
+    // Ensure session is initialized by joining via API
+    joinRoom(roomCode)
+      .then(() => setHasJoined(true))
+      .catch((err) => {
+        console.error("Failed to join room via API:", err);
+        // Still try to connect WS, but API join is safer
+        setHasJoined(true);
+      });
   }, [roomCode]);
+
+  // Handle queued state when player becomes ready
+  useEffect(() => {
+    if (playerReadyRef.current && playerRef.current && queuedState) {
+      const { video_id, is_playing, progress_ms } = queuedState;
+      playerRef.current.loadVideoById(video_id, progress_ms / 1000);
+      if (is_playing && !needsInteraction) playerRef.current.playVideo();
+      else playerRef.current.pauseVideo();
+      setQueuedState(null);
+    }
+  }, [queuedState, needsInteraction]);
 
   // ── Load YouTube IFrame API ──────────────────────────────────────────────────
   useEffect(() => {
@@ -148,6 +171,8 @@ export default function RoomPage() {
 
   // ── WebSocket connection ─────────────────────────────────────────────────────
   useEffect(() => {
+    if (!hasJoined) return;
+
     const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
     const ws = new WebSocket(`${WS_URL}/ws/room/${roomCode}/`);
     wsRef.current = ws;
@@ -159,12 +184,16 @@ export default function RoomPage() {
         const { video_id, video_title, video_channel, thumbnail, is_playing, progress_ms } = msg;
         if (video_id) {
           setCurrentVideo({ video_id, title: video_title, channel: video_channel, thumbnail, duration: '' });
+          setIsPlaying(is_playing);
+
           if (playerReadyRef.current && playerRef.current) {
             playerRef.current.loadVideoById(video_id, progress_ms / 1000);
-            if (is_playing) playerRef.current.playVideo();
+            if (is_playing && !needsInteraction) playerRef.current.playVideo();
             else playerRef.current.pauseVideo();
+          } else {
+            // Queue for later when player is ready
+            setQueuedState({ video_id, is_playing, progress_ms });
           }
-          setIsPlaying(is_playing);
         }
       }
 
@@ -182,7 +211,7 @@ export default function RoomPage() {
     getRoomMembers(roomCode).then((d) => setMemberCount(d.member_count)).catch(() => { });
 
     return () => ws.close();
-  }, [roomCode, router]);
+  }, [roomCode, router, hasJoined, needsInteraction]);
 
   // ── Sync interval (host only) ─────────────────────────────────────────────
   useEffect(() => {
@@ -268,6 +297,13 @@ export default function RoomPage() {
     sessionStorage.removeItem(`host_${roomCode}`);
     router.push('/');
   }, [roomCode, router]);
+
+  const handleJoinSync = () => {
+    setNeedsInteraction(false);
+    if (playerRef.current && playerReadyRef.current && currentVideo) {
+      if (isPlaying) playerRef.current.playVideo();
+    }
+  };
 
   // ─── Styles ────────────────────────────────────────────────────────────────
   const s = {
@@ -387,10 +423,59 @@ export default function RoomPage() {
       background: 'rgba(0,245,255,0.08)', color: '#00f5ff',
       cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600,
     },
+    // Interaction overlay
+    overlay: {
+      position: 'fixed' as const, inset: 0, zIndex: 100,
+      background: 'rgba(10,10,15,0.85)', backdropFilter: 'blur(15px)',
+      display: 'flex', flexDirection: 'column' as const,
+      alignItems: 'center', justifyContent: 'center',
+      textAlign: 'center' as const, padding: '20px',
+    },
+    overlayTitle: { fontSize: '2rem', fontWeight: 700, color: '#fff', marginBottom: '10px' },
+    overlayText: { fontSize: '1rem', color: 'rgba(255,255,255,0.6)', marginBottom: '30px', maxWidth: '400px' },
+    overlayBtn: {
+      padding: '18px 45px', fontSize: '1.2rem', fontWeight: 700,
+      background: 'linear-gradient(135deg, #00f5ff 0%, #ff00aa 100%)',
+      border: 'none', borderRadius: '50px', color: '#fff',
+      cursor: 'pointer', boxShadow: '0 0 40px rgba(0,245,255,0.4)',
+    },
   };
 
   return (
     <>
+      {/* Interaction Overlay (to unlock audio) */}
+      <AnimatePresence>
+        {needsInteraction && (
+          <motion.div
+            style={s.overlay}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+            >
+              <div style={{ fontSize: '4rem', marginBottom: '20px' }}>🎧</div>
+              <h2 style={s.overlayTitle}>Ready to Sync?</h2>
+              <p style={s.overlayText}>
+                {isHost
+                  ? "Start your room and invite friends to listen together."
+                  : "Join the room to listen to what the host is playing in real-time."}
+              </p>
+              <motion.button
+                style={s.overlayBtn}
+                onClick={handleJoinSync}
+                whileHover={{ scale: 1.05, boxShadow: '0 0 60px rgba(0,245,255,0.6)' }}
+                whileTap={{ scale: 0.95 }}
+              >
+                {isHost ? "Launch Room" : "Join Sync"}
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Hidden YouTube player (audio only via IFrame API) */}
       <div ref={playerContainerRef} style={{ position: 'fixed', bottom: 0, right: 0, width: 0, height: 0, overflow: 'hidden' }}>
         <div id="yt-player" />
