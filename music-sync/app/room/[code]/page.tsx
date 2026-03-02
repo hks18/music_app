@@ -106,6 +106,7 @@ export default function RoomPage() {
   const [needsInteraction, setNeedsInteraction] = useState(true);
   const [hasJoined, setHasJoined] = useState(false);
   const [queuedState, setQueuedState] = useState<any>(null);
+  const [copied, setCopied] = useState(false);
 
   // IFrame player
   const playerRef = useRef<YTPlayer | null>(null);
@@ -406,6 +407,13 @@ export default function RoomPage() {
     router.push('/');
   }, [roomCode, router]);
 
+  const handleCopyLink = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const handleJoinSync = () => {
     setNeedsInteraction(false);
     if (playerRef.current && playerReadyRef.current) {
@@ -452,6 +460,12 @@ export default function RoomPage() {
       background: 'rgba(255,68,68,0.15)', border: '1px solid rgba(255,68,68,0.3)',
       color: '#ff4444', padding: '8px 18px', borderRadius: '8px',
       cursor: 'pointer', fontSize: '0.9rem', transition: 'all .3s',
+    },
+    copyBtn: {
+      background: 'rgba(0,245,255,0.1)', border: '1px solid rgba(0,245,255,0.2)',
+      color: '#00f5ff', padding: '8px 15px', borderRadius: '8px',
+      cursor: 'pointer', fontSize: '0.85rem', transition: 'all .3s',
+      display: 'flex', alignItems: 'center', gap: '6px',
     },
     body: {
       flex: 1, display: 'flex', gap: '20px', padding: '20px',
@@ -617,7 +631,12 @@ export default function RoomPage() {
       <div style={s.ui}>
         {/* Top bar */}
         <div style={s.topBar}>
-          <span style={s.roomCode}>ROOM: {roomCode}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <span style={s.roomCode}>ROOM: {roomCode}</span>
+            <button style={s.copyBtn} onClick={handleCopyLink}>
+              {copied ? '✅ Copied!' : '🔗 Copy Invite'}
+            </button>
+          </div>
           <span style={s.badge}>{isHost ? '👑 Host' : '🎧 Guest'} · {memberCount} listening</span>
           <button style={s.exitBtn} onClick={handleExit}>← Exit</button>
         </div>

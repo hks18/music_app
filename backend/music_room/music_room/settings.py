@@ -72,27 +72,12 @@ DATABASES = {
 # ─────────────────────────────────────────────
 # Channel layers
 # ─────────────────────────────────────────────
-REDIS_URL = os.getenv('REDIS_URL')
-
-if REDIS_URL:
-    CHANNEL_LAYERS = {
-        'default': {
-            'BACKEND': 'channels_redis.core.RedisChannelLayer',
-            'CONFIG': {
-                "hosts": [REDIS_URL],
-                "symmetric_encryption_keys": [SECRET_KEY],
-                "redis_params": {
-                    "ssl_cert_reqs": None
-                } if REDIS_URL.startswith('rediss') else {}
-            },
-        }
+# Temporarily using InMemoryChannelLayer to fix deployment crash
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
     }
-else:
-    CHANNEL_LAYERS = {
-        'default': {
-            'BACKEND': 'channels.layers.InMemoryChannelLayer',
-        }
-    }
+}
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.AllowAny'],
