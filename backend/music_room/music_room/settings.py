@@ -72,10 +72,9 @@ DATABASES = {
 # ─────────────────────────────────────────────
 # Channel layers
 # ─────────────────────────────────────────────
-# Temporarily using InMemoryChannelLayer to fix deployment crash
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
     }
 }
 
