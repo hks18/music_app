@@ -186,16 +186,32 @@ export default function RoomPage() {
     document.body.appendChild(tag);
 
     window.onYouTubeIframeAPIReady = () => {
+      if (playerRef.current) return;
       playerRef.current = new window.YT.Player('yt-player', {
         height: '0',
         width: '0',
-        playerVars: { autoplay: 0, controls: 0 },
+        playerVars: {
+          autoplay: 0,
+          controls: 0,
+          enablejsapi: 1,
+          origin: window.location.origin,
+          rel: 0,
+          modestbranding: 1
+        },
         events: {
-          onReady: () => { playerReadyRef.current = true; },
+          onReady: () => {
+            console.log("DEBUG: [YouTube] Player Ready");
+            playerReadyRef.current = true;
+          },
           onStateChange: (e: { data: number }) => {
             if (!isHost) return;
             const playing = e.data === window.YT.PlayerState.PLAYING;
-            setIsPlaying(playing);
+            const paused = e.data === window.YT.PlayerState.PAUSED;
+
+            if (playing !== isPlaying) {
+              setIsPlaying(playing);
+              forceSync(); // Immediate broadcast on state change
+            }
           },
         },
       });
@@ -228,16 +244,33 @@ export default function RoomPage() {
       if (msg.type === 'playback_update' || msg.type === 'current_state') {
         const { video_id, video_title, video_channel, thumbnail, is_playing, progress_ms } = msg;
         if (video_id) {
-          console.log(`Applying playback sync: ${video_title} (${is_playing ? 'playing' : 'paused'})`);
+          // 1. Update basic state
           setCurrentVideo({ video_id, title: video_title, channel: video_channel, thumbnail, duration: '' });
           setIsPlaying(is_playing);
 
           if (playerReadyRef.current && playerRef.current) {
-            playerRef.current.loadVideoById(video_id, progress_ms / 1000);
+            const player = playerRef.current;
+            const currentVidId = (player as any).getVideoData?.()?.video_id;
+
+            // 2. Only load if it's a DIFFERENT video
+            if (currentVidId !== video_id) {
+              console.log(`[Sync] Loading new video: ${video_title}`);
+              player.loadVideoById(video_id, progress_ms / 1000);
+            }
+
+            // 3. Handle play/pause state synchronization
             if (is_playing && !needsInteraction) {
-              playerRef.current.playVideo();
+              player.playVideo();
             } else {
-              playerRef.current.pauseVideo();
+              player.pauseVideo();
+            }
+
+            // 4. Handle seek synchronization (only if deviation > 2s)
+            const playerTime = player.getCurrentTime();
+            const targetTime = progress_ms / 1000;
+            if (Math.abs(playerTime - targetTime) > 2.5) {
+              console.log(`[Sync] Seeking to ${targetTime}s (was at ${playerTime}s)`);
+              player.seekTo(targetTime, true);
             }
           } else {
             console.log("Player not ready, queuing sync state...");
@@ -316,6 +349,7 @@ export default function RoomPage() {
     }
     const hostKey = localStorage.getItem(`host_key_${roomCode}`) || undefined;
 
+    // Immediate broadcast
     await updatePlayback(roomCode, {
       video_id: video.video_id,
       video_title: video.title,
@@ -324,29 +358,30 @@ export default function RoomPage() {
       is_playing: true,
       progress_ms: 0,
       duration_ms: 0,
-    }, hostKey).catch(() => { });
+    }, hostKey).catch((err) => console.error("Pick video sync failed:", err));
   }, [roomCode]);
 
   // ── Play / Pause (host only) ──────────────────────────────────────────────
   const togglePlay = useCallback(async () => {
     if (!isHost || !playerReadyRef.current || !playerRef.current || !currentVideo) return;
-    if (isPlaying) {
-      playerRef.current.pauseVideo();
-      setIsPlaying(false);
-    } else {
+    const newState = !isPlaying;
+    if (newState) {
       playerRef.current.playVideo();
-      setIsPlaying(true);
+    } else {
+      playerRef.current.pauseVideo();
     }
+    setIsPlaying(newState);
+
     const hostKey = localStorage.getItem(`host_key_${roomCode}`) || undefined;
     await updatePlayback(roomCode, {
       video_id: currentVideo.video_id,
       video_title: currentVideo.title,
       video_channel: currentVideo.channel,
       thumbnail: currentVideo.thumbnail,
-      is_playing: !isPlaying,
+      is_playing: newState,
       progress_ms: Math.floor((playerRef.current?.getCurrentTime() ?? 0) * 1000),
       duration_ms: Math.floor((playerRef.current?.getDuration() ?? 0) * 1000),
-    }, hostKey).catch(() => { });
+    }, hostKey).catch((err) => console.error("Toggle play sync failed:", err));
   }, [isHost, isPlaying, currentVideo, roomCode]);
 
   // ── Leave room ────────────────────────────────────────────────────────────
