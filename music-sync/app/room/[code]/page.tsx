@@ -115,6 +115,17 @@ export default function RoomPage() {
   // WebSocket
   const wsRef = useRef<WebSocket | null>(null);
 
+  // Refs for sync (prevents infinite loop by breaking dependency chains)
+  const isPlayingRef = useRef(isPlaying);
+  const currentVideoRef = useRef(currentVideo);
+  const isHostRef = useRef(isHost);
+  const needsInteractionRef = useRef(needsInteraction);
+
+  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+  useEffect(() => { currentVideoRef.current = currentVideo; }, [currentVideo]);
+  useEffect(() => { isHostRef.current = isHost; }, [isHost]);
+  useEffect(() => { needsInteractionRef.current = needsInteraction; }, [needsInteraction]);
+
   // ── Detect host ──────────────────────────────────────────────────────────────
   useEffect(() => {
     const h = localStorage.getItem(`host_${roomCode}`) === 'true';
@@ -161,21 +172,22 @@ export default function RoomPage() {
 
   // Force sync helper
   const forceSync = useCallback(() => {
-    if (!isHost || !currentVideo || !playerRef.current || !playerReadyRef.current) return;
+    if (!isHostRef.current || !currentVideoRef.current || !playerRef.current || !playerReadyRef.current) return;
     const hostKey = localStorage.getItem(`host_key_${roomCode}`) || undefined;
+    const video = currentVideoRef.current;
     updatePlayback(roomCode, {
-      video_id: currentVideo.video_id,
-      video_title: currentVideo.title,
-      video_channel: currentVideo.channel,
-      thumbnail: currentVideo.thumbnail,
-      is_playing: isPlaying,
+      video_id: video.video_id,
+      video_title: video.title,
+      video_channel: video.channel,
+      thumbnail: video.thumbnail,
+      is_playing: isPlayingRef.current,
       progress_ms: Math.floor(playerRef.current.getCurrentTime() * 1000),
       duration_ms: Math.floor(playerRef.current.getDuration() * 1000),
     }, hostKey).catch(async err => {
       const detail = await err.response?.json().catch(() => ({}));
       console.error("Force sync failed:", err.message, detail);
     });
-  }, [isHost, currentVideo, isPlaying, roomCode]);
+  }, [roomCode]);
 
   // ── Load YouTube IFrame API ──────────────────────────────────────────────────
   useEffect(() => {
@@ -259,7 +271,7 @@ export default function RoomPage() {
             }
 
             // 3. Handle play/pause state synchronization
-            if (is_playing && !needsInteraction) {
+            if (is_playing && !needsInteractionRef.current) {
               player.playVideo();
             } else {
               player.pauseVideo();
@@ -284,7 +296,7 @@ export default function RoomPage() {
         setMemberCount(msg.member_count ?? 1);
       }
 
-      if (msg.type === 'sync_request' && isHost) {
+      if (msg.type === 'sync_request' && isHostRef.current) {
         console.log("Received sync request from new guest, pushing state...");
         forceSync();
       }
@@ -299,26 +311,28 @@ export default function RoomPage() {
     getRoomMembers(roomCode).then((d) => setMemberCount(d.member_count)).catch(() => { });
 
     return () => ws.close();
-  }, [roomCode, router, hasJoined, needsInteraction, isHost, forceSync]);
+  }, [roomCode, router, hasJoined]);
 
   // ── Sync interval (host only) ─────────────────────────────────────────────
   useEffect(() => {
-    if (!isHost || !currentVideo) return;
+    if (!isHost) return;
     const interval = setInterval(() => {
       if (!playerRef.current || !playerReadyRef.current) return;
+      const video = currentVideoRef.current;
+      if (!video) return;
       const hostKey = localStorage.getItem(`host_key_${roomCode}`) || undefined;
       updatePlayback(roomCode, {
-        video_id: currentVideo.video_id,
-        video_title: currentVideo.title,
-        video_channel: currentVideo.channel,
-        thumbnail: currentVideo.thumbnail,
-        is_playing: isPlaying,
+        video_id: video.video_id,
+        video_title: video.title,
+        video_channel: video.channel,
+        thumbnail: video.thumbnail,
+        is_playing: isPlayingRef.current,
         progress_ms: Math.floor(playerRef.current.getCurrentTime() * 1000),
         duration_ms: Math.floor(playerRef.current.getDuration() * 1000),
       }, hostKey).catch(err => console.error("Sync interval failed:", err));
     }, 2000);
     return () => clearInterval(interval);
-  }, [isHost, currentVideo, isPlaying, roomCode]);
+  }, [isHost, roomCode]);
 
   // ── YouTube search ────────────────────────────────────────────────────────────
   const handleSearch = useCallback(async (e: React.FormEvent) => {
